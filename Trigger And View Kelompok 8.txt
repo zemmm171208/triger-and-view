@@ -1,0 +1,177 @@
+Setting environment for using XAMPP for Windows.
+DELL@DESKTOP-43U0MVS c:\xampp
+# mysql -u root
+Welcome to the MariaDB monitor.  Commands end with ; or \g.
+Your MariaDB connection id is 314
+Server version: 10.4.32-MariaDB mariadb.org binary distribution
+
+Copyright (c) 2000, 2018, Oracle, MariaDB Corporation Ab and others.
+
+Type 'help;' or '\h' for help. Type '\c' to clear the current input statement.
+
+MariaDB [(none)]> create database bioskop;
+Query OK, 1 row affected (0.002 sec)
+
+MariaDB [(none)]> use bioskop;
+Database changed
+MariaDB [bioskop]> CREATE TABLE film (
+    ->     id_film INT AUTO_INCREMENT PRIMARY KEY,
+    ->     judul VARCHAR(100),
+    ->     harga INT);
+Query OK, 0 rows affected (0.025 sec)
+
+
+MariaDB [bioskop]> CREATE TABLE transaksi (
+    ->     id_transaksi INT AUTO_INCREMENT PRIMARY KEY,
+    ->     id_film INT,
+    ->     jumlah_tiket INT,
+    ->     total_harga INT);
+Query OK, 0 rows affected (0.029 sec)
+
+
+MariaDB [bioskop]> CREATE TABLE log_transaksi (
+    ->     id_log INT AUTO_INCREMENT PRIMARY KEY,
+    ->     aksi VARCHAR(50),
+    ->     waktu TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
+Query OK, 0 rows affected (0.027 sec)
+
+
+MariaDB [bioskop]> INSERT INTO film (judul, harga) VALUES
+    -> ('Avengers', 50000),
+    -> ('Spiderman', 45000),
+    -> ('Batman', 40000),
+    -> ('Joker', 38000);
+Query OK, 4 rows affected (0.008 sec)
+Records: 4  Duplicates: 0  Warnings: 0
+
+
+MariaDB [bioskop]> INSERT INTO transaksi (id_film, jumlah_tiket) VALUES
+    -> (1, 2),
+    -> (2, 3),
+    -> (3, 1);
+Query OK, 3 rows affected (0.006 sec)
+Records: 3  Duplicates: 0  Warnings: 0
+
+
+MariaDB [bioskop]> CREATE TRIGGER before_insert_transaksi
+    -> BEFORE INSERT ON transaksi
+    -> FOR EACH ROW
+    -> SET NEW.total_harga = NEW.jumlah_tiket *
+    -> (SELECT harga FROM film WHERE id_film = NEW.id_film);
+Query OK, 0 rows affected (0.019 sec)
+
+
+MariaDB [bioskop]> CREATE TRIGGER after_insert_transaksi
+    -> AFTER INSERT ON transaksi
+    -> FOR EACH ROW
+    -> INSERT INTO log_transaksi (aksi)
+    -> VALUES ('AFTER INSERT');
+Query OK, 0 rows affected (0.022 sec)
+
+
+MariaDB [bioskop]> CREATE TRIGGER before_update_transaksi
+    -> BEFORE UPDATE ON transaksi
+    -> FOR EACH ROW
+    -> SET NEW.jumlah_tiket = IF(NEW.jumlah_tiket < 1, 1, NEW.jumlah_tiket);
+Query OK, 0 rows affected (0.018 sec)
+
+
+MariaDB [bioskop]> CREATE TRIGGER after_update_transaksi
+    -> AFTER UPDATE ON transaksi
+    -> FOR EACH ROW
+    -> INSERT INTO log_transaksi (aksi)
+    -> VALUES ('AFTER UPDATE');
+Query OK, 0 rows affected (0.020 sec)
+
+
+MariaDB [bioskop]> CREATE TRIGGER before_delete_transaksi
+    -> BEFORE DELETE ON transaksi
+    -> FOR EACH ROW
+    -> INSERT INTO log_transaksi (aksi)
+    -> VALUES ('BEFORE DELETE');
+Query OK, 0 rows affected (0.018 sec)
+
+
+MariaDB [bioskop]> CREATE TRIGGER after_delete_transaksi
+    -> AFTER DELETE ON transaksi
+    -> FOR EACH ROW
+    -> INSERT INTO log_transaksi (aksi)
+    -> VALUES ('AFTER DELETE');
+Query OK, 0 rows affected (0.019 sec)
+
+
+MariaDB [bioskop]> DROP TRIGGER before_insert_transaksi;
+Query OK, 0 rows affected (0.010 sec)
+
+
+MariaDB [bioskop]> CREATE TRIGGER before_insert_transaksi
+    -> BEFORE INSERT ON transaksi
+    -> FOR EACH ROW
+    -> SET NEW.total_harga = NEW.jumlah_tiket *
+    ->     (SELECT harga FROM film WHERE id_film = NEW.id_film),
+    -> NEW.jumlah_tiket = IF(NEW.jumlah_tiket < 1, 1, NEW.jumlah_tiket);
+Query OK, 0 rows affected (0.018 sec)
+
+
+MariaDB [bioskop]> INSERT INTO transaksi (id_film, jumlah_tiket) VALUES (1, 2);
+Query OK, 1 row affected (0.007 sec)
+
+
+MariaDB [bioskop]> UPDATE transaksi SET jumlah_tiket = -5 WHERE id_transaksi = 1;
+Query OK, 1 row affected (0.005 sec)
+Rows matched: 1  Changed: 1  Warnings: 0
+
+
+MariaDB [bioskop]> DELETE FROM transaksi WHERE id_transaksi = 2;
+Query OK, 1 row affected (0.006 sec)
+
+
+MariaDB [bioskop]> SELECT * FROM log_transaksi;
++--------+---------------+---------------------+
+| id_log | aksi          | waktu               |
++--------+---------------+---------------------+
+|      1 | AFTER INSERT  | 2026-04-08 14:19:53 |
+|      2 | AFTER UPDATE  | 2026-04-08 14:20:00 |
+|      3 | BEFORE DELETE | 2026-04-08 14:20:06 |
+|      4 | AFTER DELETE  | 2026-04-08 14:20:06 |
++--------+---------------+---------------------+
+4 rows in set (0.001 sec)
+
+
+MariaDB [bioskop]> CREATE VIEW view_transaksi AS
+    -> SELECT id_transaksi, jumlah_tiket, total_harga
+    -> FROM transaksi;
+Query OK, 0 rows affected (0.007 sec)
+
+
+MariaDB [bioskop]> select * from view_transaksi;
++--------------+--------------+-------------+
+| id_transaksi | jumlah_tiket | total_harga |
++--------------+--------------+-------------+
+|            1 |            1 |        NULL |
+|            3 |            1 |        NULL |
+|            4 |            2 |      100000 |
++--------------+--------------+-------------+
+3 rows in set (0.001 sec)
+
+
+MariaDB [bioskop]> CREATE VIEW view_detail_transaksi AS
+    -> SELECT
+    ->     transaksi.id_transaksi,
+    ->     film.judul,
+    ->     transaksi.jumlah_tiket,
+    ->     transaksi.total_harga
+    -> FROM transaksi
+    -> JOIN film ON transaksi.id_film = film.id_film;
+Query OK, 0 rows affected (0.008 sec)
+
+
+MariaDB [bioskop]> select * from view_detail_transaksi;
++--------------+----------+--------------+-------------+
+| id_transaksi | judul    | jumlah_tiket | total_harga |
++--------------+----------+--------------+-------------+
+|            1 | Avengers |            1 |        NULL |
+|            4 | Avengers |            2 |      100000 |
+|            3 | Batman   |            1 |        NULL |
++--------------+----------+--------------+-------------+
+3 rows in set (0.002 sec)
